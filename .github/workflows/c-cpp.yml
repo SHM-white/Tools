@@ -24,7 +24,24 @@ jobs:
       # You may pin to the exact commit or the version.
       # uses: TheMrMilchmann/setup-msvc-dev@a03e54ab3bbe75ab9bd41f07cc5d30605e70625b
       uses: TheMrMilchmann/setup-msvc-dev@v2.0.0
-        
+      with:
+        # The target architecture
+        arch: amd64,amd64_x86,amd64_arm64
+        # optional
+        # The path to the Visual Studio installation
+        vs-path: .\vs# optional
+        # Windows SDK to use
+        sdk: 10.0.10240.0# optional
+        # Use Visual Studio libraries with Spectre mitigations
+        spectre: true# optional
+        # VC++ compiler toolset version
+        toolset: 17.0 
+        # Build for Universal Windows Platform
+        uwp: false# optional
+        # The environment variable to store the path to vcvarsall.bat in
+        export-path-to-vcvarsall: .\1# optional
+        # The environment variable to store the path to the Visual Studio installation in
+        export-path-to-vs: .\2# optional
 
     - name: Build C++ program
       run: |
