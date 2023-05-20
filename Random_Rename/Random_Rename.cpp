@@ -87,10 +87,6 @@ std::vector<std::string> getFileNames(std::string path) {
 			{
 				files.push_back(
 					fileInfo.name
-					//p
-					//.assign(path)
-					//.append("\\")
-					//.append(fileInfo.name)
 				);
 			}
 		} while (_findnext(hFile, &fileInfo) == 0);//read all file name
