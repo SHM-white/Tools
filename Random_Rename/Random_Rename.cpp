@@ -1,52 +1,133 @@
-﻿// Random_Rename.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
-//
-#include <io.h>
+﻿#include <io.h>
 #include <iostream>
 #include <vector>
-std::vector<std::string> getFileNames(std::string path = ".\\");
-int main()
+#include <ranges>
+#include <random>
+#include <chrono>
+#include <Windows.h>
+
+#ifdef _UNICODE
+#define string wstring
+#define cout wcout
+#define cin wcin
+#define _findfirst _wfindfirst
+#define _findnext _wfindnext
+#define _finddata_t _wfinddata_t
+#define rename _wrename
+#endif
+
+std::vector<std::string> getFileNames(std::string path = TEXT(".\\"));
+std::vector<std::string> filterNeededFiles(std::vector<std::string>& input, const std::string& fileTypeNeeded);
+bool RenameFiles(std::vector<std::string> source, std::string path = TEXT(".\\"));
+
+HANDLE consoleHWnd;
+
+int main(int argc,char** argv)
 {
-    std::cout << "start\n" << std::endl;
-    std::cout << "Reading file names....\n" << std::endl;
-	std::vector<std::string> fileNames = getFileNames();
-	for (auto name : fileNames) {
-		std::cout << name << "\n";
+	consoleHWnd = GetStdHandle(STD_OUTPUT_HANDLE);
+	SetConsoleTextAttribute(consoleHWnd, FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED);
+	std::string neededFileType;
+	std::string filePath;
+	if (argc <= 1) {
+		std::cout << "Enter file type you need to rename:";
+		std::cin >> neededFileType;
+		std::cout << "Enter the path of files:";
+		std::cin >> filePath;
 	}
-	std::cout << std::endl;
+	if (neededFileType.empty()) {
+		return 0;
+	}
+	else if (*neededFileType.begin() != '.') {
+		neededFileType = TEXT('.') + neededFileType;
+	}
+	if (filePath.size() == 0) {
+		filePath = TEXT(".\\");
+	}
+	else if (*(filePath.end() - 1) != TEXT('\\')) {
+		filePath += TEXT('\\');
+	}
+	SetConsoleTextAttribute(consoleHWnd, FOREGROUND_GREEN);
+    std::cout << "[INFO]Reading file names....\n" << std::endl;
+	std::vector<std::string> fileNames = getFileNames(filePath);
+	for (auto& name : fileNames) {
+		std::cout << name << std::endl;
+	}
+	SetConsoleTextAttribute(consoleHWnd, FOREGROUND_GREEN);
+	std::cout << "[INFO]Done\n" << "[INFO]Filter needed files\n" << std::endl;
+	fileNames = filterNeededFiles(fileNames, neededFileType);
+	for (auto& name : fileNames) {
+		std::cout << name << std::endl;
+	}
+	SetConsoleTextAttribute(consoleHWnd, FOREGROUND_GREEN);
+	std::cout << "[INFO]Done\n" << "[INFO]Start rename\n" << std::endl;
+	RenameFiles(fileNames, filePath);
+	SetConsoleTextAttribute(consoleHWnd, FOREGROUND_GREEN);
+	std::cout << "[INFO]Done\n" << std::endl;
+	SetConsoleTextAttribute(consoleHWnd, FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED);
+
 }
 
 std::vector<std::string> getFileNames(std::string path) {
 	std::vector<std::string> files;
 	intptr_t hFile = 0;
-	struct _finddata_t fileinfo;
+	struct _finddata_t fileInfo;
 	std::string p;
-	if ((hFile = _findfirst(p.assign(path).append("\\*").c_str(), &fileinfo)) != -1)
+	if ((hFile = _findfirst(p.assign(path).append(TEXT("\\*")).c_str(), &fileInfo)) != -1)
 	{
 		do
 		{
-			//如果是目录,递归查找
-			//如果不是,把文件绝对路径存入vector中
-			if ((fileinfo.attrib & _A_SUBDIR))
+			if (!(fileInfo.attrib & _A_SUBDIR))
 			{
-				//if (strcmp(fileinfo.name, ".") != 0 && strcmp(fileinfo.name, "..") != 0)
-					//getFileNames(p.assign(path).append("\\").append(fileinfo.name), files);
+				files.push_back(
+					fileInfo.name
+					//p
+					//.assign(path)
+					//.append("\\")
+					//.append(fileInfo.name)
+				);
 			}
-			else
-			{
-				files.push_back(p.assign(path).append(fileinfo.name));
-			}
-		} while (_findnext(hFile, &fileinfo) == 0);
+		} while (_findnext(hFile, &fileInfo) == 0);//read all file name
 		_findclose(hFile);
 	}
 	return files;
 }
-// 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单
-// 调试程序: F5 或调试 >“开始调试”菜单
 
-// 入门使用技巧: 
-//   1. 使用解决方案资源管理器窗口添加/管理文件
-//   2. 使用团队资源管理器窗口连接到源代码管理
-//   3. 使用输出窗口查看生成输出和其他消息
-//   4. 使用错误列表窗口查看错误
-//   5. 转到“项目”>“添加新项”以创建新的代码文件，或转到“项目”>“添加现有项”以将现有代码文件添加到项目
-//   6. 将来，若要再次打开此项目，请转到“文件”>“打开”>“项目”并选择 .sln 文件
+std::vector<std::string> filterNeededFiles(std::vector<std::string>& input, const std::string& fileTypeNeeded)
+{
+	std::vector<std::string> filesInNeed;
+	auto isNeededFile = [fileTypeNeeded](std::string& str) {
+		return std::string(str.end() - fileTypeNeeded.length(), str.end()) == fileTypeNeeded;
+	};
+	for (auto& i : input | std::ranges::views::filter(isNeededFile)) {
+		filesInNeed.push_back(i);
+	}
+	return filesInNeed;
+
+}
+
+bool RenameFiles(std::vector<std::string> source, std::string path)
+{
+	if (source.empty())
+	{
+		return false;
+	}
+	unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+	std::shuffle(source.begin(), source.end(), std::default_random_engine(seed));
+	for (int i = 0; i < source.size();i++) {
+		std::string newName = std::format(TEXT("{:03}_"), i) + source[i];
+		if (rename((path + source[i]).c_str(), (path + newName).c_str())) {
+			SetConsoleTextAttribute(consoleHWnd, FOREGROUND_RED);
+			std::cout << "[WARNING]\t";
+			SetConsoleTextAttribute(consoleHWnd, FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED);
+			std::cout<< path + source[i] << "\n->\t" << path + newName << "\n" << "failed\n";
+		}
+		else {
+			SetConsoleTextAttribute(consoleHWnd, FOREGROUND_GREEN);
+			std::cout << "[INFO]\t";
+			SetConsoleTextAttribute(consoleHWnd, FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED);
+			std::cout << path + source[i] << "\n->\t" << path + newName << "\n" << "success\n";
+		}
+	}
+	std::cout << std::endl;
+	return true;
+}
