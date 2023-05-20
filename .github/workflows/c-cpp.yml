@@ -28,6 +28,8 @@ jobs:
     - name: Build C++ program
       run: |
         MSBuild.exe Tools.sln /p:Configuration=Release /p:Platform=x64
+        MSBuild.exe Tools.sln /p:Configuration=Release /p:Platform=x86
+
 
     - name: Create Release
       uses: actions/upload-artifact@v2
