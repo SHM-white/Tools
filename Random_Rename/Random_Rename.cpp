@@ -6,6 +6,7 @@
 #include <chrono>
 #include <Windows.h>
 #include <fcntl.h>
+#include <regex>
 
 #ifdef _UNICODE
 #define string wstring
@@ -16,6 +17,8 @@
 #define _finddata_t _wfinddata_t
 #define rename _wrename
 #define tolower towlower
+#define regex wregex
+#define smatch wsmatch
 #endif
 
 std::vector<std::string> getFileNames(std::string path = TEXT(".\\"));
@@ -120,7 +123,11 @@ bool RenameFiles(std::vector<std::string> source, std::string path)
 	}
 	unsigned seed = (unsigned)std::chrono::system_clock::now().time_since_epoch().count();
 	std::shuffle(source.begin(), source.end(), std::default_random_engine(seed));
+	std::regex pattern{ TEXT("^[0-9][0-9][0-9]_") };
 	for (int i = 0; i < source.size();i++) {
+		if (std::regex_match(source[i], pattern)) {
+			source[i] = std::string{ source[i].begin() + 4 ,source[i].end() };
+		}
 		std::string newName = std::format(TEXT("{:03}_"), i) + source[i];
 		if (rename((path + source[i]).c_str(), (path + newName).c_str())) {
 			SetConsoleTextAttribute(consoleHWnd, FOREGROUND_RED);
