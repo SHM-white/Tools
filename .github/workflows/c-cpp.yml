@@ -36,3 +36,4 @@ jobs:
       with:
         name: Random_Rename
         path: D:\a\Tools\Tools\x64\Release\Random_Rename.exe
+              D:\a\Tools\Tools\Release\Random_Rename.exe
