@@ -1,23 +1,35 @@
-name: C/C++ CI
+
+name: C++ Build and Create Release
 
 on:
   push:
-    branches: [ "master" ]
+    branches:
+      - master
   pull_request:
-    branches: [ "master" ]
+    branches:
+      - master
+
+env:
+  BUILD_DIR: Release
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: configure
-      run: ./configure
-    - name: make
-      run: make
-    - name: make check
-      run: make check
-    - name: make distcheck
-      run: make distcheck
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Setup MSVC environment
+      uses: microsoft/setup-msvc@v1.6.2
+
+    - name: Build C++ program
+      run: |
+        MSBuild.exe Tools.sln /p:Configuration=%BUILD_DIR% /p:Platform=x64
+
+    - name: Create Release
+      uses: actions/upload-artifact@v2
+      with:
+        name: Random_Rename
+        path: Random_Rename/bin/%BUILD_DIR%/Random_Rename.exe
+
