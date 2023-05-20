@@ -5,6 +5,7 @@
 #include <random>
 #include <chrono>
 #include <Windows.h>
+#include <fcntl.h>
 
 #ifdef _UNICODE
 #define string wstring
@@ -14,16 +15,21 @@
 #define _findnext _wfindnext
 #define _finddata_t _wfinddata_t
 #define rename _wrename
+#define tolower towlower
 #endif
 
 std::vector<std::string> getFileNames(std::string path = TEXT(".\\"));
-std::vector<std::string> filterNeededFiles(std::vector<std::string>& input, const std::string& fileTypeNeeded);
+std::vector<std::string> filterNeededFiles(std::vector<std::string>& input, std::string fileTypeNeeded);
 bool RenameFiles(std::vector<std::string> source, std::string path = TEXT(".\\"));
 
 HANDLE consoleHWnd;
 
 int main(int argc,char** argv)
 {
+#ifdef UNICODE
+	_setmode(_fileno(stdout), _O_U16TEXT);
+#endif // UNICODE
+
 	consoleHWnd = GetStdHandle(STD_OUTPUT_HANDLE);
 	SetConsoleTextAttribute(consoleHWnd, FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED);
 	std::string neededFileType;
@@ -49,15 +55,13 @@ int main(int argc,char** argv)
 	SetConsoleTextAttribute(consoleHWnd, FOREGROUND_GREEN);
     std::cout << "[INFO]Reading file names....\n" << std::endl;
 	std::vector<std::string> fileNames = getFileNames(filePath);
-	for (auto& name : fileNames) {
-		std::cout << name << std::endl;
-	}
+	SetConsoleTextAttribute(consoleHWnd, FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED);
+	std::cout << std::format(TEXT("[INFO]There are {} file(s).\n"),fileNames.size()) << std::endl;
 	SetConsoleTextAttribute(consoleHWnd, FOREGROUND_GREEN);
 	std::cout << "[INFO]Done\n" << "[INFO]Filter needed files\n" << std::endl;
 	fileNames = filterNeededFiles(fileNames, neededFileType);
-	for (auto& name : fileNames) {
-		std::cout << name << std::endl;
-	}
+	SetConsoleTextAttribute(consoleHWnd, FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED);
+	std::cout << std::format(TEXT("[INFO]There are {} file(s).\n"), fileNames.size()) << std::endl;
 	SetConsoleTextAttribute(consoleHWnd, FOREGROUND_GREEN);
 	std::cout << "[INFO]Done\n" << "[INFO]Start rename\n" << std::endl;
 	RenameFiles(fileNames, filePath);
@@ -92,11 +96,14 @@ std::vector<std::string> getFileNames(std::string path) {
 	return files;
 }
 
-std::vector<std::string> filterNeededFiles(std::vector<std::string>& input, const std::string& fileTypeNeeded)
+std::vector<std::string> filterNeededFiles(std::vector<std::string>& input, std::string fileTypeNeeded)
 {
 	std::vector<std::string> filesInNeed;
+	std::transform(fileTypeNeeded.begin(), fileTypeNeeded.end(), fileTypeNeeded.begin(), tolower);
 	auto isNeededFile = [fileTypeNeeded](std::string& str) {
-		return std::string(str.end() - fileTypeNeeded.length(), str.end()) == fileTypeNeeded;
+		std::string fileName = std::string(str.end() - fileTypeNeeded.length(), str.end());
+		std::transform(fileName.begin(), fileName.end(), fileName.begin(), tolower);
+		return fileName == fileTypeNeeded;
 	};
 	for (auto& i : input | std::ranges::views::filter(isNeededFile)) {
 		filesInNeed.push_back(i);
@@ -111,7 +118,7 @@ bool RenameFiles(std::vector<std::string> source, std::string path)
 	{
 		return false;
 	}
-	unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+	unsigned seed = (unsigned)std::chrono::system_clock::now().time_since_epoch().count();
 	std::shuffle(source.begin(), source.end(), std::default_random_engine(seed));
 	for (int i = 0; i < source.size();i++) {
 		std::string newName = std::format(TEXT("{:03}_"), i) + source[i];
